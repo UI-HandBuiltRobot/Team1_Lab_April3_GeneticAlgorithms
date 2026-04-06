@@ -7,21 +7,21 @@ import numpy as np
 ELITISM_PERCENT = 0.20  # Fraction of best chromosomes preserved each generation
 MUTATION_RATE = 0.05  # Probability of gene mutation per position
 SELECTION_METHOD = "tournament"  # Parent selection method: "tournament" or "roulette"
-TOURNAMENT_K = 3  # Number of contestants in tournament selection
+TOURNAMENT_K = 5  # Number of contestants in tournament selection, default is 3
 TARGET_DISTANCE_THRESHOLD_MM = 1.0  # Distance threshold for trimming chromosomes
 POPULATION_SIZE = 150  # Number of chromosomes per generation
 RANDOM_BACKFILL_PERCENT = 0.15  # Fraction of new random individuals per generation
 EE_Z_OFFSET_MM = 195.0  # End-effector Z-axis offset in millimeters
 STEP_SIZE = 2  # Step size for each action in joint space
-NUM_GENERATIONS = 100  # Default number of generations to evolve
+NUM_GENERATIONS = 100  # Default number of generations to evolve, default is 100
 INITIAL_GENE_LENGTH_RANGE = (10, 60)  # Range for initial chromosome length
 
 DISTANCE_WEIGHT = 95.0  # Weight for distance-to-goal reward
 POSE_WEIGHT = 5.0  # Weight for pose correctness reward
-LENGTH_PENALTY_WEIGHT = 0.5  # Weight for chromosome length penalty
+LENGTH_PENALTY_WEIGHT = 1  # Weight for chromosome length penalty, default is 0.5
 DISTANCE_SCALE_MM = 500.0  # Scaling factor for distance-based fitness calculation
 
-CONVERGENCE_CHECK = False  # Enable early stopping on convergence 
+CONVERGENCE_CHECK = False  # Enable early stopping on convergence, default is False
 CONVERGENCE_TOLERANCE = 0.01  # Minimum fitness improvement threshold. Will exit if improvement is less than this value for 10 consecutive generations.
 
 FITNESS_PLOT_ENABLED = True  # Enable fitness history plotting
@@ -165,15 +165,14 @@ class GeneAlgo:
 
         # CHANGE THIS REWARD TO A REWARD FOR BEING CLOSE TO THE TARGET
         # min_distance is the closest distance the chromosome got to the target during its simulation
+        # Z 356 + 190 mm, X 160 mm, so the distance from the gripper at home position to goal position is sqrt(Z^2+X^2)
+        initial_pos_xyz = self.calHandPosition(self.INITIAL_POS)
+        Max_Dist = np.linalg.norm(self.goal - initial_pos_xyz)
+        distance_reward = 1.0 - (min_distance / Max_Dist)
+        distance_reward = np.clip(distance_reward, 0.0, 1.0)
 
-        distance_reward = 0  
-
-
+        # Normalization 0-1
         #################################################################################
-
-
-
-
 
         #################################################################################
         ##############################   POSE REWARD   ##################################
@@ -189,26 +188,25 @@ class GeneAlgo:
 
         #################################################################################
 
-
-
-
-
         #################################################################################
         ##############################  LENGTH PENALTY  #################################
         # Length penalty
-        length_penalty = 0 # CHANGE THIS TO PENELIZE LONGER CHROMOSOMES (Function of chromosome_length)
 
+        min_len, max_len = INITIAL_GENE_LENGTH_RANGE
+
+        length_penalty = (chromosome_length - min_len) / (max_len - min_len)
+        length_penalty = np.clip(length_penalty, 0.0, 1.0)
+        # CHANGE THIS TO PENELIZE LONGER CHROMOSOMES (Function of chromosome_length)
+
+        # magnitude
         #################################################################################
-
-
-
 
         #################################################################################
         ########################## TOTAL CHROMOSOME FITNESS #############################
 
         # Add together your rewards and penalties to compute a single fitness score for this chromosome.
-        fitness = distance_reward + pose_reward - length_penalty
-
+        # Goal: Maximize the fitness score!
+        fitness = distance_reward + pose_reward - 0.2 * length_penalty
         #################################################################################
 
 

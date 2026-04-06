@@ -8,9 +8,9 @@ from genetic_algorithm import GeneAlgo
 # ----------------------------
 # IDE Runtime Configuration
 # ----------------------------
-GOAL_X = 140  # Target X position in millimeters
-GOAL_Y = 80  # Target Y position in millimeters
-GOAL_Z = -180  # Target Z position in millimeters
+GOAL_X = 160  # Target X position in millimeters
+GOAL_Y = 0  # Target Y position in millimeters
+GOAL_Z = -190  # Target Z position in millimeters
 
 VIZ = True  # Enable ROS2 visualization
 EXECUTE_HARDWARE = False  # Execute trajectory on physical robot
