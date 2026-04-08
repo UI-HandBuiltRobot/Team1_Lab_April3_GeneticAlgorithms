@@ -1,18 +1,16 @@
 import random
 from math import cos, sin
-
 import numpy as np
 
-
 ELITISM_PERCENT = 0.20  # Fraction of best chromosomes preserved each generation
-MUTATION_RATE = 0.05  # Probability of gene mutation per position
+MUTATION_RATE = 0.1  # Probability of gene mutation per position
 SELECTION_METHOD = "tournament"  # Parent selection method: "tournament" or "roulette"
 TOURNAMENT_K = 5  # Number of contestants in tournament selection, default is 3
 TARGET_DISTANCE_THRESHOLD_MM = 1.0  # Distance threshold for trimming chromosomes
 POPULATION_SIZE = 150  # Number of chromosomes per generation
 RANDOM_BACKFILL_PERCENT = 0.15  # Fraction of new random individuals per generation
 EE_Z_OFFSET_MM = 195.0  # End-effector Z-axis offset in millimeters
-STEP_SIZE = 1  # Step size for each action in joint space
+STEP_SIZE = 2  # Step size for each action in joint space
 NUM_GENERATIONS = 200  # Default number of generations to evolve, default is 100
 INITIAL_GENE_LENGTH_RANGE = (10, 60)  # Range for initial chromosome length
 
@@ -27,7 +25,6 @@ CONVERGENCE_TOLERANCE = 0.01  # Minimum fitness improvement threshold. Will exit
 FITNESS_PLOT_ENABLED = True  # Enable fitness history plotting
 FITNESS_PLOT_FILENAME = "ga_fitness_history.png"  # Output plot filename
 FITNESS_PLOT_DPI = 300  # Resolution for saved plot
-
 
 class GeneAlgo:
     ACTIONMAT = np.array([
@@ -166,13 +163,12 @@ class GeneAlgo:
         # CHANGE THIS REWARD TO A REWARD FOR BEING CLOSE TO THE TARGET
         # min_distance is the closest distance the chromosome got to the target during its simulation
         # Z 356 + 190 mm, X 160 mm, so the distance from the gripper at home position to goal position is sqrt(Z^2+X^2)
+        # Normalization 0-1
         initial_pos_xyz = self.calHandPosition(self.INITIAL_POS)
         Max_Dist = np.linalg.norm(self.goal - initial_pos_xyz)
         # distance_reward = 1.0 - (min_distance / Max_Dist)
-        distance_reward = np.exp(-5.0 * (min_distance / Max_Dist))
+        distance_reward = np.exp(-7.0 * (min_distance / Max_Dist))
         distance_reward = np.clip(distance_reward, 0.0, 1.0)
-
-        # Normalization 0-1
         #################################################################################
 
         #################################################################################
@@ -198,11 +194,9 @@ class GeneAlgo:
         if min_distance < 10.0:
             length_penalty = 0.1 * norm_length
         else:
-            # 도달 전에는 길이에 상관없이 일단 가까이 가는 것이 우선
+            # Low penalty when far from target to encourage exploration, higher penalty when close to encourage shorter solutions
             length_penalty = 0.01 * norm_length
         # CHANGE THIS TO PENELIZE LONGER CHROMOSOMES (Function of chromosome_length)
-
-        # magnitude
         #################################################################################
 
         #################################################################################
