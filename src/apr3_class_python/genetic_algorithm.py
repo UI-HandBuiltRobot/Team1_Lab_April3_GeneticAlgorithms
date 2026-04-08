@@ -12,7 +12,7 @@ TARGET_DISTANCE_THRESHOLD_MM = 1.0  # Distance threshold for trimming chromosome
 POPULATION_SIZE = 150  # Number of chromosomes per generation
 RANDOM_BACKFILL_PERCENT = 0.15  # Fraction of new random individuals per generation
 EE_Z_OFFSET_MM = 195.0  # End-effector Z-axis offset in millimeters
-STEP_SIZE = 2  # Step size for each action in joint space
+STEP_SIZE = 1  # Step size for each action in joint space
 NUM_GENERATIONS = 200  # Default number of generations to evolve, default is 100
 INITIAL_GENE_LENGTH_RANGE = (10, 60)  # Range for initial chromosome length
 
