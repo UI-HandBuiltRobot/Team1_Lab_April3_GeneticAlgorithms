@@ -13,7 +13,7 @@ POPULATION_SIZE = 150  # Number of chromosomes per generation
 RANDOM_BACKFILL_PERCENT = 0.15  # Fraction of new random individuals per generation
 EE_Z_OFFSET_MM = 195.0  # End-effector Z-axis offset in millimeters
 STEP_SIZE = 2  # Step size for each action in joint space
-NUM_GENERATIONS = 100  # Default number of generations to evolve, default is 100
+NUM_GENERATIONS = 200  # Default number of generations to evolve, default is 100
 INITIAL_GENE_LENGTH_RANGE = (10, 60)  # Range for initial chromosome length
 
 DISTANCE_WEIGHT = 95.0  # Weight for distance-to-goal reward
@@ -168,7 +168,8 @@ class GeneAlgo:
         # Z 356 + 190 mm, X 160 mm, so the distance from the gripper at home position to goal position is sqrt(Z^2+X^2)
         initial_pos_xyz = self.calHandPosition(self.INITIAL_POS)
         Max_Dist = np.linalg.norm(self.goal - initial_pos_xyz)
-        distance_reward = 1.0 - (min_distance / Max_Dist)
+        # distance_reward = 1.0 - (min_distance / Max_Dist)
+        distance_reward = np.exp(-5.0 * (min_distance / Max_Dist))
         distance_reward = np.clip(distance_reward, 0.0, 1.0)
 
         # Normalization 0-1
@@ -176,15 +177,14 @@ class GeneAlgo:
 
         #################################################################################
         ##############################   POSE REWARD   ##################################
-        # Pose reward (computed inline)
         if best_state is None:
             pose_score = 0.0
         else:
             theta = -best_state[0] + best_state[1] - best_state[2]
-            pose_score = max(0.0, 1.0 - abs(theta - 180.0) / 180.0) # this is a weighted calculation of the pose [0-1 limits]
+            pose_score = max(0.0, 1.0 - abs(theta - 180.0) / 180.0)
 
-
-        pose_reward = 0 ######## CHANGE THIS REWARD TO A REWARD FOR HAVING A GOOD POSE
+        pose_weight_factor = np.clip(1.0 - (min_distance / 50.0), 0.0, 1.0)
+        pose_reward = pose_weight_factor * pose_score
 
         #################################################################################
 
@@ -193,9 +193,13 @@ class GeneAlgo:
         # Length penalty
 
         min_len, max_len = INITIAL_GENE_LENGTH_RANGE
-
-        length_penalty = (chromosome_length - min_len) / (max_len - min_len)
-        length_penalty = np.clip(length_penalty, 0.0, 1.0)
+        norm_length = (chromosome_length - min_len) / (max_len - min_len)
+            
+        if min_distance < 10.0:
+            length_penalty = 0.1 * norm_length
+        else:
+            # 도달 전에는 길이에 상관없이 일단 가까이 가는 것이 우선
+            length_penalty = 0.01 * norm_length
         # CHANGE THIS TO PENELIZE LONGER CHROMOSOMES (Function of chromosome_length)
 
         # magnitude
@@ -206,7 +210,7 @@ class GeneAlgo:
 
         # Add together your rewards and penalties to compute a single fitness score for this chromosome.
         # Goal: Maximize the fitness score!
-        fitness = distance_reward + pose_reward - 0.2 * length_penalty
+        fitness = distance_reward + 0.5 * pose_reward - length_penalty
         #################################################################################
 
 
