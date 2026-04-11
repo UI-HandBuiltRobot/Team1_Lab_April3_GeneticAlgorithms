@@ -24,7 +24,7 @@ source /opt/ros/jazzy/setup.bash
 Build only this package:
 
 ```bash
-cd Lab_April3_GeneticAlgorithms
+cd Team1_Lab_April3_GeneticAlgorithms
 colcon build --symlink-install --packages-select apr3_class_ros2_sim
 ```
 

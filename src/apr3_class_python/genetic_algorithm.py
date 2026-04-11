@@ -134,9 +134,9 @@ class GeneAlgo:
         return [random.randint(0, len(self.ACTIONMAT) - 1) for _ in range(length)]
 
     # ---------------------------------------------------------
-    # UNIFIED REWARD FUNCTION — EDIT THIS TO CHANGE BEHAVIOR
+    # UNIFIED REWARD FUNCTION
     # ---------------------------------------------------------
-    def _compute_reward(self, min_distance, best_state, chromosome_length):
+    def _compute_reward(self, min_distance, best_state, chromosome_length, total_reversals):
         """
         Unified reward function.
         Modify this function to change how the GA evaluates solutions.
@@ -178,7 +178,7 @@ class GeneAlgo:
         else:
             theta = -best_state[0] + best_state[1] - best_state[2]
             pose_score = max(0.0, 1.0 - abs(theta - 180.0) / 180.0)
-
+        #Expand pose reward when close to target, minimal reward when far to encourage exploration, higher reward when close to encourage correct poses
         pose_weight_factor = np.clip(1.0 - (min_distance / 50.0), 0.0, 1.0)
         pose_reward = pose_weight_factor * pose_score
 
@@ -194,9 +194,17 @@ class GeneAlgo:
         if min_distance < 10.0:
             length_penalty = 0.1 * norm_length
         else:
-            # Low penalty when far from target to encourage exploration, higher penalty when close to encourage shorter solutions
+            # Low penalty when far fraom target to encourage exploration, higher penalty when close to encourage shorter solutions
             length_penalty = 0.01 * norm_length
         # CHANGE THIS TO PENELIZE LONGER CHROMOSOMES (Function of chromosome_length)
+        #################################################################################
+
+        #################################################################################
+        ############################## SMOOTHNESS PENALTY ###############################
+        # Weight how much you hate wiggles. 
+        # Start small so it doesn't overpower the goal distance!
+        SMOOTHNESS_WEIGHT = 0.00
+        smoothness_penalty = total_reversals * SMOOTHNESS_WEIGHT
         #################################################################################
 
         #################################################################################
@@ -204,7 +212,7 @@ class GeneAlgo:
 
         # Add together your rewards and penalties to compute a single fitness score for this chromosome.
         # Goal: Maximize the fitness score!
-        fitness = distance_reward + 0.5 * pose_reward - length_penalty
+        fitness = distance_reward + 1.5 * pose_reward - length_penalty - smoothness_penalty
         #################################################################################
 
 
@@ -216,18 +224,20 @@ class GeneAlgo:
             "distance_reward": distance_reward,
             "pose_reward": pose_reward,
             "length_penalty": length_penalty,
+            "smoothness_penalty": smoothness_penalty,
             "fitness": fitness,
         }
     # ---------------------------------------------------------
 
-    def _compose_chromosome_fitness(self, best_record, chromosome_length):
+    def _compose_chromosome_fitness(self, best_record, chromosome_length, total_reversals):
         if best_record is None:
-            return self._compute_reward(None, None, chromosome_length)
+            return self._compute_reward(None, None, chromosome_length, total_reversals)
 
         return self._compute_reward(
             best_record["distance"],
             best_record["state"],
-            chromosome_length
+            chromosome_length,
+            total_reversals
         )
 
     ### STEP 5: EVALUATE THE CHROMOSOMES AND FIND WHEN THE CHROMOSOME GETS CLOSEST TO THE TARGET
@@ -236,21 +246,38 @@ class GeneAlgo:
         best_record = None
         trim_length = None
 
+        # Track directions for smoothness penalty: 1 for positive direction, -1 for negative direction, 0 for no movement
+        last_directions = np.array([0.0, 0.0, 0.0])
+        total_reversals = 0
+
         for gene_index, gene in enumerate(chromosome, start=1):
-    ### STEP 6: IF SELECTED, SIMULATE THE ACTIONS IN RVIZ
-            step_record = self._simulate_action(state, self.ACTIONMAT[gene], step_size)
+            action = self.ACTIONMAT[gene]
+            
+            # 1. Simulate the action FIRST
+            step_record = self._simulate_action(state, action, step_size)
             state = step_record["state"]
 
             if step_record["valid"]:
+                
+                # 2. Update best record and trim distance
                 if best_record is None or step_record["distance"] < best_record["distance"]:
                     best_record = step_record
 
                 if trim_length is None and step_record["distance"] <= TARGET_DISTANCE_THRESHOLD_MM:
                     trim_length = gene_index
 
+                # 3. ONLY count wiggles if we are outside the "Forgiveness Zone" (e.g., 30mm)
+                if step_record["distance"] > 100.0:
+                    for j in range(3):
+                        if action[j] != 0:
+                            if last_directions[j] != 0 and last_directions[j] != action[j]:
+                                total_reversals += 1
+                            last_directions[j] = action[j]
+
         trimmed_chromosome = list(chromosome if trim_length is None else chromosome[:trim_length])
         best_state = self.INITIAL_POS.copy() if best_record is None else best_record["state"].copy()
-        fitness_components = self._compose_chromosome_fitness(best_record, len(trimmed_chromosome))
+        
+        fitness_components = self._compose_chromosome_fitness(best_record, len(trimmed_chromosome), total_reversals)
 
         return {
             "chromosome": trimmed_chromosome,
@@ -379,6 +406,7 @@ class GeneAlgo:
                 f"Success: {self._distance_to_success_percent(fitness_components['minimum_distance']):6.2f}% | "
                 f"Rdist: {fitness_components['distance_reward']:7.2f} | "
                 f"Rpose: {fitness_components['pose_reward']:7.2f} | "
+                f"Smoothness: {fitness_components['smoothness_penalty']:7.2f} | "
                 f"Penalty: {fitness_components['length_penalty']:7.2f} | "
                 f"Collision: {self.isWithin(best_position)}"
             )
