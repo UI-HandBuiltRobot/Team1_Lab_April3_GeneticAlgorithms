@@ -8,7 +8,7 @@ from genetic_algorithm import GeneAlgo
 # ----------------------------
 # IDE Runtime Configuration
 # ----------------------------
-GOAL_X = 160  # Target X position in millimeters
+GOAL_X = 200  # Target X position in millimeters
 GOAL_Y = 0  # Target Y position in millimeters
 GOAL_Z = -190  # Target Z position in millimeters
 

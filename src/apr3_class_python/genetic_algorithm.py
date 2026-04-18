@@ -9,7 +9,7 @@ TOURNAMENT_K = 5  # Number of contestants in tournament selection, default is 3
 TARGET_DISTANCE_THRESHOLD_MM = 1.0  # Distance threshold for trimming chromosomes
 POPULATION_SIZE = 150  # Number of chromosomes per generation
 RANDOM_BACKFILL_PERCENT = 0.15  # Fraction of new random individuals per generation
-EE_Z_OFFSET_MM = 195.0  # End-effector Z-axis offset in millimeters
+EE_Z_OFFSET_MM = 0.0  # End-effector Z-axis offset in millimeters (Default of 195.0)
 STEP_SIZE = 2  # Step size for each action in joint space
 NUM_GENERATIONS = 200  # Default number of generations to evolve, default is 100
 INITIAL_GENE_LENGTH_RANGE = (10, 60)  # Range for initial chromosome length
@@ -23,7 +23,7 @@ CONVERGENCE_CHECK = False  # Enable early stopping on convergence, default is Fa
 CONVERGENCE_TOLERANCE = 0.01  # Minimum fitness improvement threshold. Will exit if improvement is less than this value for 10 consecutive generations.
 
 FITNESS_PLOT_ENABLED = True  # Enable fitness history plotting
-FITNESS_PLOT_FILENAME = "ga_fitness_history.png"  # Output plot filename
+FITNESS_PLOT_FILENAME =  "ga_fitness_history.png"  # Output plot filename
 FITNESS_PLOT_DPI = 300  # Resolution for saved plot
 
 class GeneAlgo:
@@ -59,6 +59,8 @@ class GeneAlgo:
     ### STEP 2: SET GOAL (X, Y, Z) IN MILLIMETRES FROM MAIN FUNCTION
     def setGoal(self, goal):
         goal_vector = np.asarray(goal, dtype=float)
+        #subtract the height of the arm base to shift the ground plane down
+        goal_vector[2] -= EE_Z_OFFSET_MM
         if goal_vector.shape != (3,):
             raise ValueError("Goal must be a 3-element vector [X, Y, Z] in millimetres.")
         self.goal = goal_vector
@@ -154,9 +156,6 @@ class GeneAlgo:
                 "fitness": -length_penalty,
             }
         
-
-
-
         #################################################################################
         ############################## DISTANCE REWARD ##################################
 
@@ -167,7 +166,7 @@ class GeneAlgo:
         initial_pos_xyz = self.calHandPosition(self.INITIAL_POS)
         Max_Dist = np.linalg.norm(self.goal - initial_pos_xyz)
         # distance_reward = 1.0 - (min_distance / Max_Dist)
-        distance_reward = np.exp(-7.0 * (min_distance / Max_Dist))
+        distance_reward = np.exp(-5.0 * (min_distance / Max_Dist))
         distance_reward = np.clip(distance_reward, 0.0, 1.0)
         #################################################################################
 
@@ -179,7 +178,7 @@ class GeneAlgo:
             theta = -best_state[0] + best_state[1] - best_state[2]
             pose_score = max(0.0, 1.0 - abs(theta - 180.0) / 180.0)
         #Expand pose reward when close to target, minimal reward when far to encourage exploration, higher reward when close to encourage correct poses
-        pose_weight_factor = np.clip(1.0 - (min_distance / 50.0), 0.0, 1.0)
+        pose_weight_factor = np.clip(1.0 - (min_distance / 300.0), 0.0, 1.0)
         pose_reward = pose_weight_factor * pose_score
 
         #################################################################################
@@ -212,11 +211,8 @@ class GeneAlgo:
 
         # Add together your rewards and penalties to compute a single fitness score for this chromosome.
         # Goal: Maximize the fitness score!
-        fitness = distance_reward + 1.5 * pose_reward - length_penalty - smoothness_penalty
+        fitness = distance_reward + 20.0 * pose_reward - length_penalty - smoothness_penalty
         #################################################################################
-
-
-
 
         return {
             "minimum_distance": min_distance,
