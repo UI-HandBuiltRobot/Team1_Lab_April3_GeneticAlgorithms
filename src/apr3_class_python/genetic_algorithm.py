@@ -9,7 +9,7 @@ TOURNAMENT_K = 5  # Number of contestants in tournament selection, default is 3
 TARGET_DISTANCE_THRESHOLD_MM = 1.0  # Distance threshold for trimming chromosomes
 POPULATION_SIZE = 150  # Number of chromosomes per generation
 RANDOM_BACKFILL_PERCENT = 0.15  # Fraction of new random individuals per generation
-EE_Z_OFFSET_MM = 195.0  # End-effector Z-axis offset in millimeters
+EE_Z_OFFSET_MM = 170.0  # End-effector Z-axis offset in millimeters
 STEP_SIZE = 2  # Step size for each action in joint space
 NUM_GENERATIONS = 200  # Default number of generations to evolve, default is 100
 INITIAL_GENE_LENGTH_RANGE = (10, 60)  # Range for initial chromosome length
@@ -40,7 +40,8 @@ class GeneAlgo:
     ], dtype=float)
 
     PLANAR_COLLISION_VOLUMES = [[-500.0, 0.0, 110.0, 198.0]]
-    INITIAL_POS = np.array([-14.25, 76.75, 0.0], dtype=float)
+    #INITIAL_POS = np.array([-14.25, 76.75, 0.0], dtype=float)
+    INITIAL_POS = np.array([-75.0, 36.5, -56.5], dtype=float)
 
     def __init__(self, viz_enabled=False, viz_callback=None, viz_skip_gens=0, yaw_deg=0.0):
         self.goal = np.array([0.0, 0.0, 0.0], dtype=float)
@@ -212,7 +213,7 @@ class GeneAlgo:
 
         # Add together your rewards and penalties to compute a single fitness score for this chromosome.
         # Goal: Maximize the fitness score!
-        fitness = distance_reward + 1.5 * pose_reward - length_penalty - smoothness_penalty
+        fitness = distance_reward + 2.5 * pose_reward - length_penalty - smoothness_penalty
         #################################################################################
 
 
