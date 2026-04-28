@@ -213,7 +213,7 @@ class GeneAlgo:
 
         # Add together your rewards and penalties to compute a single fitness score for this chromosome.
         # Goal: Maximize the fitness score!
-        fitness = distance_reward + 2.5 * pose_reward - length_penalty - smoothness_penalty
+        fitness = distance_reward + 20 * pose_reward - length_penalty - smoothness_penalty
         #################################################################################
 
 
